@@ -53,3 +53,23 @@ test("calculates totals and builds a WhatsApp order message", () => {
   assert.match(message, /Chaveiro/);
   assert.match(message, /Total informado/);
 });
+
+test("keeps product variation identity, caps stock and includes order reference", () => {
+  const variant = { ...product, id: "item-1::azul", productId: "item-1", variantId: "azul", variantName: "Azul", variantHex: "#0000FF", stock: 2, quantity: 5 };
+  const items = normalizeCartItems([variant]);
+  assert.equal(items[0].productId, "item-1");
+  assert.equal(items[0].variantId, "azul");
+  assert.equal(items[0].quantity, 2);
+  assert.equal(updateCartItem(items, variant.id, 1)[0].quantity, 2);
+  assert.match(createWhatsAppMessage(items, "order-123"), /Referência do pedido: order-123/);
+  assert.match(createWhatsAppMessage(items, "order-123"), /Azul/);
+});
+
+test("does not combine duplicate persisted lines above the stock limit", () => {
+  const items = normalizeCartItems([
+    { ...product, id: "item-1::azul", productId: "item-1", variantId: "azul", stock: 3, quantity: 2 },
+    { ...product, id: "item-1::azul", productId: "item-1", variantId: "azul", stock: 3, quantity: 2 },
+  ]);
+  assert.equal(items[0].quantity, 3);
+});
+
