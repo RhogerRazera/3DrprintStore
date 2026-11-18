@@ -32,7 +32,7 @@ export default function ProjectPage() {
       .then((snapshot) => { if (snapshot.exists()) setContent(mergeSiteContent(snapshot.data())); })
       .catch(() => undefined);
     getDocs(collection(db, "productColors")).then((snapshot) => {
-      const saved = snapshot.docs.map((item) => ({ id: item.id, ...item.data(), custom: true } as ProductColorOption));
+      const saved = snapshot.docs.map((item) => ({ id: item.id, ...item.data(), custom: !defaultProductColors.some((base) => base.id === item.id) } as ProductColorOption));
       const savedById = new Map(saved.map((color) => [color.id, color]));
       setProductColors([...defaultProductColors.map((color) => ({ ...color, ...(savedById.get(color.id) ?? {}) })), ...saved.filter((color) => !defaultProductColors.some((base) => base.id === color.id))]);
     }).catch(() => undefined);
