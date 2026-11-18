@@ -1,15 +1,20 @@
 {
   "hosting": {
     "public": "out",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
   },
   "firestore": {
-    "rules": "firestore.rules"
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   },
   "auth": {
     "providers": {
       "googleSignIn": {
-        "oAuthBrandDisplayName": "3DR Print Store",
+        "oAuthBrandDisplayName": "Kriatto3D",
         "supportEmail": "3drprintstore@gmail.com"
       }
     }

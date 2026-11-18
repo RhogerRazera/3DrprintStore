@@ -1,4 +1,4 @@
-# 3DR Print Portfolio
+# Kriatto3D
 
 Landing page and content panel built with Next.js, TypeScript, Firebase Authentication, Cloud Firestore, and Firebase Hosting. The site is exported as static files to stay on the Firebase Spark plan.
 

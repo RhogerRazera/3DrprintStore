@@ -1,10 +1,11 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- Product photos come from administrator-entered URLs, so their hosts are not fixed. */
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, Check, ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
-import { demoProducts, normalizeProduct, Product } from "@/lib/products";
+import { collection, doc, getDoc, getDocs, limit, query, where } from "firebase/firestore";
+import { normalizeProduct, Product } from "@/lib/products";
 import { db } from "@/lib/firebase";
 import { categoryLabel, defaultSiteContent, mergeSiteContent, SiteContent } from "@/lib/site-content";
 import ShoppingCart from "@/components/shopping-cart";
@@ -12,22 +13,35 @@ import ShoppingCart from "@/components/shopping-cart";
 export default function ProjectPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [content, setContent] = useState<SiteContent>(defaultSiteContent);
   const [activeImage, setActiveImage] = useState(0);
 
   useEffect(() => {
-    const projectSlug = new URLSearchParams(window.location.search).get("slug") ?? "";
-    const example = demoProducts.find((item) => item.slug === projectSlug);
-    if (!db) { setProduct(example ?? null); setLoading(false); return; }
+    const productSlug = new URLSearchParams(window.location.search).get("slug") ?? "";
+    if (!db) {
+      setLoadError(true);
+      setLoading(false);
+      return;
+    }
+
     getDoc(doc(db, "siteContent", "home"))
       .then((snapshot) => { if (snapshot.exists()) setContent(mergeSiteContent(snapshot.data())); })
       .catch(() => undefined);
-    getDocs(query(collection(db, "products"), where("published", "==", true)))
+
+    getDocs(query(
+      collection(db, "products"),
+      where("published", "==", true),
+      where("slug", "==", productSlug),
+      limit(1),
+    ))
       .then((snapshot) => {
-        const found = snapshot.docs.map((item) => normalizeProduct(item.id, item.data())).find((item) => item.slug === projectSlug);
-        setProduct(found ?? null);
+        setProduct(snapshot.empty ? null : normalizeProduct(snapshot.docs[0].id, snapshot.docs[0].data()));
       })
-      .catch(() => setProduct(example ?? null))
+      .catch(() => {
+        setProduct(null);
+        setLoadError(true);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -48,8 +62,11 @@ export default function ProjectPage() {
     document.querySelector('meta[name="description"]')?.setAttribute("content", product?.description ?? content.siteDescription);
   }, [product, content.siteName, content.siteTitle, content.siteDescription]);
 
-  if (loading) return <main className="project-page"><p className="project-loading">{content.projectLoading}</p></main>;
-  if (!product) return <main className="project-page"><nav className="project-nav"><Link href="/" className="brand"><span className="brand-mark">{content.siteInitial}</span> {content.siteName}<span className="brand-dot">.</span></Link><Link href="/" className="back-link"><ArrowLeft size={16}/> {content.projectBackLabel}</Link></nav><section className="admin-login"><h1>{content.projectNotFoundTitle}</h1><p>{content.projectNotFoundBody}</p><Link href="/" className="button button-dark">{content.projectExploreLabel}</Link></section></main>;
+  if (loading) return <main className="project-page"><p className="project-loading" role="status">{content.projectLoading}</p></main>;
+  if (!product) return <main className="project-page">
+    <nav className="project-nav"><Link href="/" className="brand"><span className="brand-mark">{content.siteInitial}</span> {content.siteName}<span className="brand-dot">.</span></Link><Link href="/" className="back-link"><ArrowLeft size={16}/> {content.projectBackLabel}</Link></nav>
+    <section className="admin-login"><h1>{loadError ? "Produto indisponível no momento" : content.projectNotFoundTitle}</h1><p>{loadError ? "Não foi possível consultar o catálogo. Tente novamente mais tarde ou fale com a Kriatto3D pelo WhatsApp." : content.projectNotFoundBody}</p>{loadError ? <a className="button button-dark" href="https://wa.me/5521995144189" target="_blank" rel="noopener noreferrer">Consultar pelo WhatsApp ↗</a> : <Link href="/" className="button button-dark">{content.projectExploreLabel}</Link>}</section>
+  </main>;
 
   return <main className="project-page">
     <nav className="project-nav"><Link href="/" className="brand"><span className="brand-mark">{content.siteInitial}</span> {content.siteName}<span className="brand-dot">.</span></Link><Link href="/" className="back-link"><ArrowLeft size={16}/> {content.projectBackLabel}</Link></nav>

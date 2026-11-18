@@ -1,9 +1,10 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- Product photos come from administrator-entered URLs, so their hosts are not fixed. */
 
 import { useMemo, useState, useEffect, CSSProperties } from "react";
 import Link from "next/link";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Menu, Search, X, Sparkles, Package, Shapes, Send, ShoppingBag, MessageCircle } from "lucide-react";
-import { demoProducts, normalizeProduct, Product } from "@/lib/products";
+import { normalizeProduct } from "@/lib/products";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { categoryLabel, defaultSiteContent, getSiteCategories, mergeSiteContent, SiteContent } from "@/lib/site-content";
@@ -15,22 +16,32 @@ function categoryIcon(icon: string) {
   return <Shapes/>;
 }
 
-export default function HomePage({ initialProducts }: { initialProducts: Product[] }) {
+export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState("Todos");
   const [search, setSearch] = useState("");
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<import("@/lib/products").Product[]>([]);
+  const [productsStatus, setProductsStatus] = useState<"loading" | "ready" | "error">("loading");
   const [content, setContent] = useState<SiteContent>(defaultSiteContent);
 
   useEffect(() => {
-    if (db) {
-      getDoc(doc(db, "siteContent", "home")).then((snapshot) => {
-        if (snapshot.exists()) setContent(mergeSiteContent(snapshot.data()));
-      }).catch(() => { /* Mantém o conteúdo padrão até o banco ficar disponível. */ });
-      getDocs(query(collection(db, "products"), where("published", "==", true)))
-        .then((snapshot) => setProducts(snapshot.docs.map((item) => normalizeProduct(item.id, item.data()))))
-        .catch(() => { /* Mantém os projetos demonstrativos enquanto a base não estiver disponível. */ });
+    if (!db) {
+      setProducts([]);
+      setProductsStatus("error");
+      return;
     }
+    getDoc(doc(db, "siteContent", "home")).then((snapshot) => {
+      if (snapshot.exists()) setContent(mergeSiteContent(snapshot.data()));
+    }).catch(() => { /* Mantém o conteúdo padrão se o documento não puder ser lido. */ });
+    getDocs(query(collection(db, "products"), where("published", "==", true)))
+      .then((snapshot) => {
+        setProducts(snapshot.docs.map((item) => normalizeProduct(item.id, item.data())));
+        setProductsStatus("ready");
+      })
+      .catch(() => {
+        setProducts([]);
+        setProductsStatus("error");
+      });
   }, []);
 
   useEffect(() => {
@@ -88,8 +99,8 @@ export default function HomePage({ initialProducts }: { initialProducts: Product
         <div className="hero-visual hero-art" aria-label={content.heroCompositionAlt}>
           <div className="orbit orbit-one"/><div className="orbit orbit-two"/>
           <div className="hero-sticker sticker-top" style={{ whiteSpace: "pre-line" }}>{content.heroStickerTop}</div>
-          <div className="hero-product hero-product-main"><img src={content.heroMainImageUrl} alt={content.heroMainImageAlt}/><span>{content.heroMainImageLabel}</span></div>
-          <div className="hero-product hero-product-small"><img src={content.heroSmallImageUrl} alt={content.heroSmallImageAlt}/><span>{content.heroSmallImageLabel}</span></div>
+          <div className="hero-product hero-product-main">{content.heroMainImageUrl && <><img src={content.heroMainImageUrl} alt={content.heroMainImageAlt}/><span>{content.heroMainImageLabel}</span></>}</div>
+          <div className="hero-product hero-product-small">{content.heroSmallImageUrl && <><img src={content.heroSmallImageUrl} alt={content.heroSmallImageAlt}/><span>{content.heroSmallImageLabel}</span></>}</div>
           <div className="hero-sticker sticker-bottom" style={{ whiteSpace: "pre-line" }}><Sparkles size={18}/> {content.heroStickerBottom}</div>
           <span className="hero-index">{content.heroIndex}</span>
         </div>
@@ -117,8 +128,10 @@ export default function HomePage({ initialProducts }: { initialProducts: Product
             <div className="product-info"><div><span className="product-category">{categoryLabel(content, p.category)}</span><h3><Link href={`/projeto/?slug=${encodeURIComponent(p.slug)}`}>{p.title}</Link></h3><strong className="product-price">{p.price && p.price > 0 ? p.price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "Preço sob consulta"}</strong></div><div className="product-card-actions"><button className="round-arrow" aria-label={`Adicionar ${p.title} ao carrinho`} onClick={() => window.dispatchEvent(new CustomEvent("3dr-cart-add", { detail: p }))}><ShoppingBag size={17}/></button><Link href={`/projeto/?slug=${encodeURIComponent(p.slug)}`} className="round-arrow" aria-label={`Ver ${p.title}`}><ArrowUpRight size={18}/></Link></div></div>
           </article>)}
         </div>
-        {filtered.length === 0 && <div className="empty-state"><Search size={26}/><h3>{content.emptyTitle}</h3><p>{content.emptyBody}</p><button className="button button-dark" onClick={() => {setSearch("");setActiveCategory("Todos");}}>{content.emptyButton}</button></div>}
-        <div className="portfolio-bottom"><span>{content.portfolioCountPrefix} {filtered.length.toString().padStart(2,"0")} {content.portfolioCountWord}</span><span>{content.portfolioCountSuffix}</span></div>
+        {productsStatus === "loading" && <p className="project-loading" role="status">Carregando produtos…</p>}
+        {productsStatus === "error" && <div className="empty-state" role="status"><h3>Catálogo temporariamente indisponível</h3><p>Não conseguimos carregar os produtos agora. Fale com a Kriatto3D pelo WhatsApp para consultar o catálogo.</p><a className="button button-dark" href="https://wa.me/5521995144189" target="_blank" rel="noopener noreferrer">Consultar pelo WhatsApp ↗</a></div>}
+        {productsStatus === "ready" && filtered.length === 0 && <div className="empty-state"><Search size={26}/><h3>{content.emptyTitle}</h3><p>{content.emptyBody}</p><button className="button button-dark" onClick={() => {setSearch("");setActiveCategory("Todos");}}>{content.emptyButton}</button></div>}
+        {productsStatus === "ready" && <div className="portfolio-bottom"><span>{content.portfolioCountPrefix} {filtered.length.toString().padStart(2,"0")} {content.portfolioCountWord}</span><span>{content.portfolioCountSuffix}</span></div>}
       </section>
 
       <section className="manifesto">

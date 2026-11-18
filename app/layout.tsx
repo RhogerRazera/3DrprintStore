@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FORMA — Produtos que viram ideias",
-  description: "Portfólio de produtos personalizados, mascotes, chaveiros, vestuário, brindes e embalagens.",
+  title: "Kriatto3D — Produtos que viram ideias",
+  description: "Portfólio de produtos personalizados em impressão 3D pela Kriatto3D.",
   openGraph: {
-    title: "FORMA — Produtos que viram ideias",
-    description: "Projetos personalizados com identidade e impacto.",
+    title: "Kriatto3D — Produtos que viram ideias",
+    description: "Produtos personalizados em impressão 3D pela Kriatto3D.",
     type: "website"
   }
 };

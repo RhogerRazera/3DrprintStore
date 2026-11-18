@@ -28,16 +28,16 @@ export function categoryLabel(content: SiteContent, value: string): string {
 }
 
 export const defaultSiteContent: SiteContent = {
-  siteName: "FORMA", siteInitial: "F", siteTitle: "FORMA — Produtos que viram ideias.", adminButtonLabel: "Painel administrativo",
+  siteName: "Kriatto3D", siteInitial: "K", siteTitle: "Kriatto3D — Produtos que viram ideias.", adminButtonLabel: "Painel administrativo",
   siteDescription: "Portfólio de produtos personalizados, mascotes, chaveiros, vestuário, brindes e embalagens.",
   navPortfolio: "Portfólio", navCategories: "Categorias", navProcess: "Processo", navContact: "Vamos conversar",
   heroEyebrow: "ESTÚDIO DE PRODUTOS & EXPERIÊNCIAS", heroTitleLine1: "Ideias que", heroTitleLine2: "ganham", heroTitleEm: "forma.",
   heroLead: "Criamos produtos que contam histórias. Do primeiro rascunho ao detalhe que faz alguém olhar duas vezes.",
   heroPrimaryLabel: "Explorar projetos", heroPrimaryHref: "#portfolio", heroSecondaryLabel: "Como funciona", heroSecondaryHref: "#processo", heroFootLeft: "DESIGN COM INTENÇÃO.", heroFootRight: "FEITO PARA MARCAR.",
-  heroStickerTop: "IDEIA\n→ OBJETO", heroStickerBottom: "FEITO\nPRA VOCÊ", heroCompositionAlt: "Composição de produtos demonstrativos", heroMainImageUrl: "https://images.unsplash.com/photo-1559454403-b8fb88521f11?auto=format&fit=crop&w=900&q=85",
-  heroMainImageAlt: "Produto de design demonstrativo", heroMainImageLabel: "01 / PERSONAGEM",
-  heroSmallImageUrl: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=600&q=85",
-  heroSmallImageAlt: "Camiseta de coleção demonstrativa", heroSmallImageLabel: "02 / VESTUÁRIO",
+  heroStickerTop: "IDEIA\n→ OBJETO", heroStickerBottom: "FEITO\nPRA VOCÊ", heroCompositionAlt: "Apresentação visual da Kriatto3D", heroMainImageUrl: "",
+  heroMainImageAlt: "Produto personalizado", heroMainImageLabel: "01 / PERSONAGEM",
+  heroSmallImageUrl: "",
+  heroSmallImageAlt: "Camiseta personalizada", heroSmallImageLabel: "02 / VESTUÁRIO",
   heroIndex: "PORTFÓLIO Nº 001 — 2026", heroScroll: "ROLE PARA DESCOBRIR", categoryAll: "Todos",
   introKicker: "O QUE PODEMOS CRIAR", introTitleLine1: "Não é só um", introTitleLine2: "produto. É", introTitleEm: "presença.",
   introBody: "Objetos, personagens e experiências que levam a identidade da sua marca para o mundo real. Cada projeto começa com uma boa pergunta: o que queremos fazer as pessoas sentir?",
@@ -52,7 +52,7 @@ export const defaultSiteContent: SiteContent = {
   portfolioKicker: "SELEÇÃO DE PROJETOS", portfolioTitleLine1: "Feito para", portfolioTitleEm: "chamar atenção.",
   portfolioBody: "Uma seleção de conceitos e possibilidades. O próximo projeto pode ser o seu.", searchPlaceholder: "Buscar projeto...",
   emptyTitle: "Nenhum projeto encontrado", emptyBody: "Tente outra busca ou escolha uma categoria diferente.", emptyButton: "Limpar filtros", productViewLabel: "VER PROJETO",
-  portfolioCountPrefix: "EXIBINDO", portfolioCountWord: "PROJETOS", portfolioCountSuffix: "CONCEITOS DEMONSTRATIVOS · PERSONALIZAÇÃO SOB CONSULTA",
+  portfolioCountPrefix: "EXIBINDO", portfolioCountWord: "PROJETOS", portfolioCountSuffix: "PERSONALIZAÇÃO SOB CONSULTA",
   manifestoEyebrow: "NOSSO JEITO DE FAZER", manifestoTitleLine1: "Do “e se...”", manifestoTitleLine2: "ao", manifestoTitleEm: "“é isso!”",
   manifestoBody: "Boa ideia merece sair da tela. Unimos conceito, estética e atenção aos detalhes para criar produtos com identidade própria.",
   manifestoButton: "Tirar uma ideia do papel", manifestoButtonHref: "#contato", manifestoSide: "IMAGINAR / DESENHAR / MATERIALIZAR",
@@ -64,10 +64,10 @@ export const defaultSiteContent: SiteContent = {
   contactKicker: "SEU PROJETO COMEÇA AQUI", contactTitleLine1: "Vamos criar", contactTitleLine2: "algo", contactTitleEm: "memorável?",
   contactBody: "Conte um pouco da sua ideia. Vamos entender o que você precisa e conversar sobre os próximos passos.",
   contactNote: "Sem compromisso. A primeira conversa é para entender sua ideia.",
-  footerTagline: "Produtos que viram ideias.", footerTop: "Voltar ao topo", footerCopyright: "© 2026 FORMA STUDIO",
+  footerTagline: "Produtos que viram ideias.", footerTop: "Voltar ao topo", footerCopyright: "© 2026 KRIATTO3D",
   projectLoading: "Carregando produto…", projectNotFoundTitle: "Produto não encontrado", projectNotFoundBody: "Este produto pode ter sido removido ou não está publicado.",
   projectBackLabel: "Voltar ao portfólio", projectExploreLabel: "Explorar portfólio", projectStudyLabel: "DETALHES DO PRODUTO", projectMaterialsLabel: "Material", projectPaletteLabel: "Paleta",
-  projectNote: "Produto demonstrativo. Especificações finais são definidas no orçamento.", projectQuoteLabel: "Solicitar orçamento", projectFooterExploreLabel: "Explorar outros produtos",
+  projectNote: "Valores e especificações serão confirmados no orçamento.", projectQuoteLabel: "Solicitar orçamento", projectFooterExploreLabel: "Explorar outros produtos",
   colorPaper: "#f2f0e9", colorInk: "#171915", colorLime: "#d6fa42",
 };
 
@@ -144,6 +144,16 @@ const previousProcessCopy: Record<string, string> = {
 
 export function mergeSiteContent(saved: Record<string, unknown>): SiteContent {
   const merged = { ...defaultSiteContent, ...saved } as SiteContent;
+  if (merged.siteName === "FORMA") merged.siteName = "Kriatto3D";
+  if (typeof merged.heroMainImageUrl === "string" && merged.heroMainImageUrl.includes("photo-1559454403-b8fb88521f11")) merged.heroMainImageUrl = "";
+  if (typeof merged.heroSmallImageUrl === "string" && merged.heroSmallImageUrl.includes("photo-1521572163474-6864f9cf17ab")) merged.heroSmallImageUrl = "";
+  if (merged.heroCompositionAlt === "Composição de produtos demonstrativos") merged.heroCompositionAlt = defaultSiteContent.heroCompositionAlt;
+  if (merged.heroMainImageAlt === "Produto de design demonstrativo") merged.heroMainImageAlt = defaultSiteContent.heroMainImageAlt;
+  if (merged.heroSmallImageAlt === "Camiseta de coleção demonstrativa") merged.heroSmallImageAlt = defaultSiteContent.heroSmallImageAlt;
+  if (merged.siteInitial === "F" && merged.siteName === "Kriatto3D") merged.siteInitial = "K";
+  if (typeof merged.siteTitle === "string" && merged.siteTitle.startsWith("FORMA")) merged.siteTitle = defaultSiteContent.siteTitle;
+  if (merged.footerCopyright === "© 2026 FORMA STUDIO") merged.footerCopyright = defaultSiteContent.footerCopyright;
+  if (merged.portfolioCountSuffix === "CONCEITOS DEMONSTRATIVOS · PERSONALIZAÇÃO SOB CONSULTA") merged.portfolioCountSuffix = defaultSiteContent.portfolioCountSuffix;
   if (typeof saved.categoryItems !== "string") {
     const legacyItems = defaultProductCategories.map((category, index) => ({
       ...category,
