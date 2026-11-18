@@ -41,7 +41,7 @@ export default function HomePage() {
     }, { threshold: 0.14, rootMargin: "0px 0px -35px 0px" });
     targets.forEach((target) => observer.observe(target));
     return () => observer.disconnect();
-  }, []);
+  }, [content.categoryItems]);
 
   useEffect(() => {
     document.title = content.siteTitle;
