@@ -77,7 +77,7 @@ export default function AdminPage() {
     ]);
     const nextProducts = snapshot.docs.map((item) => normalizeProduct(item.id, item.data()));
     setProducts(nextProducts);
-    const savedColors = colorSnapshot.docs.map((item) => ({ id: item.id, ...item.data(), custom: true } as ProductColorOption));
+    const savedColors = colorSnapshot.docs.map((item) => ({ id: item.id, ...item.data(), custom: !defaultProductColors.some((base) => base.id === item.id) } as ProductColorOption));
     const savedById = new Map(savedColors.map((color) => [color.id, color]));
     setProductColors([
       ...defaultProductColors.map((color) => ({ ...color, ...(savedById.get(color.id) ?? {}) })),
@@ -259,7 +259,7 @@ export default function AdminPage() {
     const id = editingColorId ?? name.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     if (productColors.some((color) => color.id === id && color.id !== editingColorId)) { setError("Já existe uma cor com esse nome."); return; }
     try {
-      await setDoc(doc(db, "productColors", id), { name, hex, active: colorDraft.active, custom: true, updatedAt: serverTimestamp() }, { merge: true });
+      await setDoc(doc(db, "productColors", id), { name, hex, active: colorDraft.active, custom: !defaultProductColors.some((color) => color.id === id), updatedAt: serverTimestamp() }, { merge: true });
       setColorDraft({ id: "", name: "", hex: "#000000", active: true, custom: true }); setEditingColorId(null); setNotice("Cor salva."); await refreshProducts();
     } catch (reason) { setError(describeError(reason, "Não foi possível salvar a cor")); }
   }
@@ -373,7 +373,11 @@ export default function AdminPage() {
     finally { setBusy(false); }
   }
   async function removeProduct(product: Product) {
-    if (!db || !window.confirm(`Excluir “${product.title}”?`)) return;
+    if (!db) return;
+    if (products.some((kit) => kit.kind === "kit" && kit.kitComponents?.some((component) => component.productId === product.id))) {
+      setError(`“${product.title}” faz parte de um kit. Remova-o dos kits antes de excluir o produto.`); return;
+    }
+    if (!window.confirm(`Excluir “${product.title}”?`)) return;
     try { await deleteDoc(doc(db, "products", product.id)); await refreshProducts(); setNotice("Produto excluído."); }
     catch (reason) { setError(describeError(reason, "Não foi possível excluir o produto")); }
   }
