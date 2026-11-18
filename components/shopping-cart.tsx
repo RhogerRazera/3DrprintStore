@@ -155,7 +155,7 @@ export default function ShoppingCart() {
           const product = dataById.get(item.productId);
           if (!product || product.published !== true) throw new Error(`${item.title} não está mais publicado.`);
           if ((product.kind === "kit") !== (item.kind === "kit")) throw new Error(`O cadastro de ${item.title} mudou; remova e adicione novamente ao carrinho.`);
-            if (product.kind === "kit") {
+          if (product.kind === "kit") {
             const components = Array.isArray(product.kitComponents) ? product.kitComponents as { productId: string; quantity: number; variantId?: string; productTitle?: string }[] : [];
             if (components.length < 2) throw new Error(`Os itens do kit ${item.title} não estão disponíveis.`);
             components.forEach((component) => componentIds.add(component.productId));
@@ -180,22 +180,32 @@ export default function ShoppingCart() {
             demand.set(key, { ...requirement, quantity: requirement.quantity + (previous?.quantity ?? 0) });
           }
         }
+        const sharedStockDemand = new Map<string, { quantity: number; stock: number; title: string }>();
         for (const requirement of demand.values()) {
-            const data = dataById.get(requirement.productId);
-            if (!data || data.published !== true) throw new Error(`${requirement.title} não está mais disponível.`);
-            const variants = Array.isArray(data.variants) ? data.variants as { colorId: string; available?: boolean; stock?: number }[] : normalizeProduct(requirement.productId, data).variants ?? [];
-            if (data.kind === "kit") throw new Error("Kits dentro de kits não são permitidos.");
-            let stock: number | undefined;
-            if (requirement.variantId) {
-              const variant = variants.find((candidate) => candidate.colorId === requirement.variantId);
-              if (!variant || variant.available === false) throw new Error(`A variação selecionada de ${requirement.title} está indisponível.`);
-              stock = typeof variant.stock === "number" ? variant.stock : typeof data.stock === "number" ? data.stock : undefined;
-            } else {
-              if (variants.length) throw new Error(`Selecione uma cor para ${requirement.title}.`);
-              stock = typeof data.stock === "number" ? data.stock : undefined;
+          const data = dataById.get(requirement.productId);
+          if (!data || data.published !== true) throw new Error(`${requirement.title} não está mais disponível.`);
+          const variants = Array.isArray(data.variants) ? data.variants as { colorId: string; available?: boolean; stock?: number }[] : normalizeProduct(requirement.productId, data).variants ?? [];
+          if (data.kind === "kit") throw new Error("Kits dentro de kits não são permitidos.");
+          if (requirement.variantId) {
+            const variant = variants.find((candidate) => candidate.colorId === requirement.variantId);
+            if (!variant || variant.available === false) throw new Error(`A variação selecionada de ${requirement.title} está indisponível.`);
+            if (typeof variant.stock === "number") {
+              if (variant.stock < requirement.quantity) throw new Error(`Estoque insuficiente para ${requirement.title}; disponível: ${variant.stock}.`);
+            } else if (typeof data.stock === "number") {
+              const current = sharedStockDemand.get(requirement.productId) ?? { quantity: 0, stock: data.stock, title: requirement.title };
+              current.quantity += requirement.quantity;
+              sharedStockDemand.set(requirement.productId, current);
             }
-            if (stock !== undefined && stock < requirement.quantity) throw new Error(`Estoque insuficiente para ${requirement.title}; disponível: ${stock}.`);
+          } else {
+            if (variants.length) throw new Error(`Selecione uma cor para ${requirement.title}.`);
+            if (typeof data.stock === "number") {
+              const current = sharedStockDemand.get(requirement.productId) ?? { quantity: 0, stock: data.stock, title: requirement.title };
+              current.quantity += requirement.quantity;
+              sharedStockDemand.set(requirement.productId, current);
+            }
+          }
         }
+        for (const entry of sharedStockDemand.values()) if (entry.quantity > entry.stock) throw new Error(`Estoque insuficiente para ${entry.title}; disponível: ${entry.stock}.`);
       }
       if (!db) throw new Error("O sistema de pedidos está indisponível. Tente novamente mais tarde.");
       const orderRef = await addDoc(collection(db, "orders"), {
