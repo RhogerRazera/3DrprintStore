@@ -31,7 +31,7 @@ export const defaultSiteContent: SiteContent = {
   siteName: "Kriatto3D", siteInitial: "K", siteTitle: "Kriatto3D — Produtos que viram ideias.", adminButtonLabel: "Painel administrativo",
   siteDescription: "Portfólio de produtos personalizados, mascotes, chaveiros, vestuário, brindes e embalagens.",
   navCategories: "Categorias", navProcess: "Processo", navContact: "Vamos conversar",
-  heroEyebrow: "ESTÚDIO DE PRODUTOS & EXPERIÊNCIAS", heroTitleLine1: "Ideias que", heroTitleLine2: "ganham", heroTitleEm: "forma.",
+  heroEyebrow: "ESTÚDIO DE PRODUTOS & EXPERIÊNCIAS", heroTitleLine1: "Ideias que", heroTitleLine2: "ganham", heroTitleEm: "vida.",
   heroLead: "Criamos produtos que contam histórias. Do primeiro rascunho ao detalhe que faz alguém olhar duas vezes.",
   heroPrimaryLabel: "Explorar categorias", heroPrimaryHref: "#categorias", heroSecondaryLabel: "Como funciona", heroSecondaryHref: "#processo", heroFootLeft: "DESIGN COM INTENÇÃO.", heroFootRight: "FEITO PARA MARCAR.",
   heroStickerTop: "IDEIA\n→ OBJETO", heroStickerBottom: "FEITO\nPRA VOCÊ", heroCompositionAlt: "Apresentação visual da Kriatto3D", heroMainImageUrl: "",
@@ -133,6 +133,7 @@ const previousProcessCopy: Record<string, string> = {
 export function mergeSiteContent(saved: Record<string, unknown>): SiteContent {
   const merged = { ...defaultSiteContent, ...saved } as SiteContent;
   if (merged.siteName === "FORMA") merged.siteName = "Kriatto3D";
+  if (typeof merged.heroTitleEm === "string" && /^forma\.?$/i.test(merged.heroTitleEm.trim())) merged.heroTitleEm = defaultSiteContent.heroTitleEm;
   if (merged.heroPrimaryHref === "#portfolio") merged.heroPrimaryHref = "#categorias";
   if (merged.heroPrimaryLabel === "Explorar projetos") merged.heroPrimaryLabel = "Explorar categorias";
   if (typeof merged.heroMainImageUrl === "string" && merged.heroMainImageUrl.includes("photo-1559454403-b8fb88521f11")) merged.heroMainImageUrl = "";
