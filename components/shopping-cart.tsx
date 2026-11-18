@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ShoppingBag, X, Minus, Plus, Trash2 } from "lucide-react";
-import type { Product } from "@/lib/products";
+import { normalizeProduct, type Product } from "@/lib/products";
 import type { CartItem as StoredCartItem } from "@/lib/cart-utils.mjs";
 import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -183,7 +183,7 @@ export default function ShoppingCart() {
         for (const requirement of demand.values()) {
             const data = dataById.get(requirement.productId);
             if (!data || data.published !== true) throw new Error(`${requirement.title} não está mais disponível.`);
-            const variants = Array.isArray(data.variants) ? data.variants as { colorId: string; available?: boolean; stock?: number }[] : [];
+            const variants = Array.isArray(data.variants) ? data.variants as { colorId: string; available?: boolean; stock?: number }[] : normalizeProduct(requirement.productId, data).variants ?? [];
             if (data.kind === "kit") throw new Error("Kits dentro de kits não são permitidos.");
             let stock: number | undefined;
             if (requirement.variantId) {
