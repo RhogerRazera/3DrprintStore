@@ -4,6 +4,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ShoppingBag, X, Minus, Plus, Trash2 } from "lucide-react";
 import type { Product } from "@/lib/products";
+import type { CartItem as StoredCartItem } from "@/lib/cart-utils.mjs";
+import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import {
   addCartItem,
   MAX_CART_LINES,
@@ -13,7 +16,7 @@ import {
   updateCartItem,
 } from "@/lib/cart-utils.mjs";
 
-type CartItem = Pick<Product, "id" | "title" | "slug" | "category" | "price" | "image"> & { quantity: number };
+type CartItem = StoredCartItem;
 const KEY = "3drprint-cart-v1";
 const formatPrice = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const focusableSelector = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -63,8 +66,13 @@ export default function ShoppingCart() {
       }
     };
     const add = (event: Event) => {
-      const product = (event as CustomEvent<Product>).detail;
+      const product = (event as CustomEvent<Product & { productId?: string; variantId?: string; variantName?: string; variantHex?: string; stock?: number }>).detail;
       if (!product) return;
+      const current = itemsRef.current.find((item) => item.id === product.id);
+      if (product.stock === 0 || (current && product.stock !== undefined && current.quantity >= product.stock)) {
+        setCartNotice(product.stock === 0 ? `${product.title} está sem estoque.` : `Você já atingiu o estoque disponível de ${product.title}.`);
+        return;
+      }
       const isNewLine = !itemsRef.current.some((item) => item.id === product.id);
       const limitReached = isNewLine && itemsRef.current.length >= MAX_CART_LINES;
       const next = addCartItem(itemsRef.current, product);
@@ -128,9 +136,83 @@ export default function ShoppingCart() {
   const itemCount = items.reduce((count, item) => count + item.quantity, 0);
   const checkout = () => {
     if (items.length === 0) return;
-    const message = createWhatsAppMessage(items);
-    window.open("https://wa.me/5521995144189?text=" + encodeURIComponent(message), "_blank", "noopener,noreferrer");
+    void checkoutByWhatsApp();
   };
+
+  async function checkoutByWhatsApp() {
+    const popup = window.open("about:blank", "_blank");
+    setCartNotice("Conferindo disponibilidade e registrando o pedido…");
+    try {
+      if (db) {
+        const productIds = new Set(items.map((item) => item.productId));
+        const roots = await Promise.all([...productIds].map(async (id) => {
+          const snapshot = await getDoc(doc(db!, "products", id));
+          return [id, snapshot.exists() ? snapshot.data() : null] as const;
+        }));
+        const dataById = new Map(roots);
+        const componentIds = new Set<string>();
+        for (const item of items) {
+          const product = dataById.get(item.productId);
+          if (!product || product.published !== true) throw new Error(`${item.title} não está mais publicado.`);
+          if ((product.kind === "kit") !== (item.kind === "kit")) throw new Error(`O cadastro de ${item.title} mudou; remova e adicione novamente ao carrinho.`);
+            if (product.kind === "kit") {
+            const components = Array.isArray(product.kitComponents) ? product.kitComponents as { productId: string; quantity: number; variantId?: string; productTitle?: string }[] : [];
+            if (components.length < 2) throw new Error(`Os itens do kit ${item.title} não estão disponíveis.`);
+            components.forEach((component) => componentIds.add(component.productId));
+          }
+        }
+        const missing = [...componentIds].filter((id) => !dataById.has(id));
+        const componentData = await Promise.all(missing.map(async (id) => {
+          const snapshot = await getDoc(doc(db!, "products", id));
+          return [id, snapshot.exists() ? snapshot.data() : null] as const;
+        }));
+        componentData.forEach(([id, data]) => dataById.set(id, data));
+
+        const demand = new Map<string, { productId: string; variantId?: string; quantity: number; title: string }>();
+        for (const item of items) {
+          const product = dataById.get(item.productId)!;
+          const requirements = product.kind === "kit"
+            ? (product.kitComponents as { productId: string; quantity: number; variantId?: string; productTitle?: string }[]).map((component) => ({ productId: component.productId, variantId: component.variantId, quantity: component.quantity * item.quantity, title: component.productTitle ?? item.title }))
+            : [{ productId: item.productId, variantId: item.variantId, quantity: item.quantity, title: item.title }];
+          for (const requirement of requirements) {
+            const key = `${requirement.productId}::${requirement.variantId ?? ""}`;
+            const previous = demand.get(key);
+            demand.set(key, { ...requirement, quantity: requirement.quantity + (previous?.quantity ?? 0) });
+          }
+        }
+        for (const requirement of demand.values()) {
+            const data = dataById.get(requirement.productId);
+            if (!data || data.published !== true) throw new Error(`${requirement.title} não está mais disponível.`);
+            const variants = Array.isArray(data.variants) ? data.variants as { colorId: string; available?: boolean; stock?: number }[] : [];
+            if (data.kind === "kit") throw new Error("Kits dentro de kits não são permitidos.");
+            let stock: number | undefined;
+            if (requirement.variantId) {
+              const variant = variants.find((candidate) => candidate.colorId === requirement.variantId);
+              if (!variant || variant.available === false) throw new Error(`A variação selecionada de ${requirement.title} está indisponível.`);
+              stock = typeof variant.stock === "number" ? variant.stock : typeof data.stock === "number" ? data.stock : undefined;
+            } else {
+              if (variants.length) throw new Error(`Selecione uma cor para ${requirement.title}.`);
+              stock = typeof data.stock === "number" ? data.stock : undefined;
+            }
+            if (stock !== undefined && stock < requirement.quantity) throw new Error(`Estoque insuficiente para ${requirement.title}; disponível: ${stock}.`);
+        }
+      }
+      if (!db) throw new Error("O sistema de pedidos está indisponível. Tente novamente mais tarde.");
+      const orderRef = await addDoc(collection(db, "orders"), {
+        items: items.map((item) => ({ productId: item.productId, ...(item.variantId ? { variantId: item.variantId } : {}), quantity: item.quantity })),
+        status: "pending",
+        createdAt: serverTimestamp(),
+      });
+      const message = createWhatsAppMessage(items, orderRef.id);
+      const url = "https://wa.me/5521995144189?text=" + encodeURIComponent(message);
+      setCartNotice(`Pedido ${orderRef.id} registrado para confirmação.`);
+      if (popup) { popup.opener = null; popup.location.href = url; }
+      else window.location.href = url;
+    } catch (reason) {
+      popup?.close();
+      setCartNotice(reason instanceof Error ? reason.message : "Não foi possível registrar o pedido.");
+    }
+  }
 
   return <>
     {cartNotice && <div className="cart-toast" role="status" aria-live="polite">{cartNotice}</div>}
@@ -157,11 +239,11 @@ export default function ShoppingCart() {
           : <>
             <div className="cart-items">{items.map((item) => <article key={item.id}>
               <img src={item.image} alt=""/>
-              <div className="cart-item-copy"><strong>{item.title}</strong><small>{item.price ? formatPrice(item.price) : "Preço sob consulta"}</small>
+              <div className="cart-item-copy"><strong>{item.title}</strong>{item.kind === "kit" && <small>KIT PROMOCIONAL</small>}{item.variantName && <small><span className="cart-color-dot" style={{ backgroundColor: item.variantHex ?? "#777" }}/> {item.variantName}</small>}<small>{item.price ? formatPrice(item.price) : "Preço sob consulta"}</small>
                 <div className="cart-qty">
                   <button aria-label={`Diminuir quantidade de ${item.title}`} onClick={() => update(item.id, -1)}><Minus size={14}/></button>
                   <span>{item.quantity}</span>
-                  <button aria-label={`Aumentar quantidade de ${item.title}`} onClick={() => update(item.id, 1)}><Plus size={14}/></button>
+                  <button aria-label={`Aumentar quantidade de ${item.title}`} disabled={item.stock !== undefined && item.quantity >= item.stock} onClick={() => update(item.id, 1)}><Plus size={14}/></button>
                   <button aria-label={`Remover ${item.title}`} onClick={() => update(item.id, -item.quantity)}><Trash2 size={14}/></button>
                 </div>
               </div>
@@ -175,3 +257,4 @@ export default function ShoppingCart() {
     </div>}
   </>;
 }
+
