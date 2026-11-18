@@ -1,14 +1,12 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- Product photos come from administrator-entered URLs, so their hosts are not fixed. */
 
-import { useMemo, useState, useEffect, CSSProperties } from "react";
+import { useState, useEffect, CSSProperties } from "react";
 import Link from "next/link";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Menu, Search, X, Sparkles, Package, Shapes, Send, ShoppingBag, MessageCircle } from "lucide-react";
-import { normalizeProduct } from "@/lib/products";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, Menu, X, Sparkles, Package, Shapes, Send, MessageCircle } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
-import { categoryLabel, defaultSiteContent, getSiteCategories, mergeSiteContent, SiteContent } from "@/lib/site-content";
-import ShoppingCart from "@/components/shopping-cart";
+import { doc, getDoc } from "firebase/firestore";
+import { defaultSiteContent, getSiteCategories, mergeSiteContent, SiteContent } from "@/lib/site-content";
 
 function categoryIcon(icon: string) {
   if (icon === "package") return <Package/>;
@@ -17,31 +15,14 @@ function categoryIcon(icon: string) {
 }
 
 export default function HomePage() {
-  const [activeCategory, setActiveCategory] = useState("Todos");
-  const [search, setSearch] = useState("");
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [products, setProducts] = useState<import("@/lib/products").Product[]>([]);
-  const [productsStatus, setProductsStatus] = useState<"loading" | "ready" | "error">("loading");
   const [content, setContent] = useState<SiteContent>(defaultSiteContent);
 
   useEffect(() => {
-    if (!db) {
-      setProducts([]);
-      setProductsStatus("error");
-      return;
-    }
+    if (!db) return;
     getDoc(doc(db, "siteContent", "home")).then((snapshot) => {
       if (snapshot.exists()) setContent(mergeSiteContent(snapshot.data()));
     }).catch(() => { /* Mantém o conteúdo padrão se o documento não puder ser lido. */ });
-    getDocs(query(collection(db, "products"), where("published", "==", true)))
-      .then((snapshot) => {
-        setProducts(snapshot.docs.map((item) => normalizeProduct(item.id, item.data())));
-        setProductsStatus("ready");
-      })
-      .catch(() => {
-        setProducts([]);
-        setProductsStatus("error");
-      });
   }, []);
 
   useEffect(() => {
@@ -60,7 +41,7 @@ export default function HomePage() {
     }, { threshold: 0.14, rootMargin: "0px 0px -35px 0px" });
     targets.forEach((target) => observer.observe(target));
     return () => observer.disconnect();
-  }, [products]);
+  }, []);
 
   useEffect(() => {
     document.title = content.siteTitle;
@@ -69,11 +50,6 @@ export default function HomePage() {
     document.querySelector('meta[property="og:description"]')?.setAttribute("content", content.siteDescription);
   }, [content.siteTitle, content.siteDescription]);
 
-  const filtered = useMemo(() => products.filter((p) => {
-    const categoryMatch = activeCategory === "Todos" || p.category === activeCategory || categoryLabel(content, p.category) === activeCategory;
-    const query = search.trim().toLocaleLowerCase("pt-BR");
-    return categoryMatch && (!query || `${p.title} ${p.category} ${p.description}`.toLocaleLowerCase("pt-BR").includes(query));
-  }), [activeCategory, search, products, content]);
 
 
   return (
@@ -81,7 +57,7 @@ export default function HomePage() {
       <header className="site-header">
         <Link href="/" className="brand" aria-label={`${content.siteName} página inicial`}><span className="brand-mark">{content.siteInitial}</span> {content.siteName}<span className="brand-dot">.</span></Link>
         <nav className={`main-nav ${mobileMenu ? "nav-open" : ""}`}>
-          <a href="#portfolio" onClick={() => setMobileMenu(false)}>{content.navPortfolio}</a><a href="#categorias" onClick={() => setMobileMenu(false)}>{content.navCategories}</a><a href="#processo" onClick={() => setMobileMenu(false)}>{content.navProcess}</a>
+          <a href="#categorias" onClick={() => setMobileMenu(false)}>{content.navCategories}</a><a href="#processo" onClick={() => setMobileMenu(false)}>{content.navProcess}</a>
           <a className="nav-contact" href="#contato" onClick={() => setMobileMenu(false)}>{content.navContact} <ArrowUpRight size={15}/></a>
         </nav>
         <button className="mobile-toggle" onClick={() => setMobileMenu(!mobileMenu)} aria-label={mobileMenu ? "Fechar menu" : "Abrir menu"}>{mobileMenu ? <X/> : <Menu/>}</button>
@@ -115,24 +91,10 @@ export default function HomePage() {
             <span className="category-number">{String(index + 1).padStart(2,"0")}</span><span className="category-icon">{categoryIcon(category.icon)}</span><span className="category-bottom"><strong>{category.name}</strong><small>{category.description}</small></span><ArrowUpRight className="category-arrow" size={20}/>
           </Link>)}
         </div>
-        <p className="category-hint">{content.categoriesHint} <button onClick={() => {setActiveCategory("Todos"); document.getElementById("portfolio")?.scrollIntoView({behavior:"smooth"});}}>{content.categoriesSeeAll} ↗</button></p>
+        <p className="category-hint">{content.categoriesHint} <Link href="/catalogo/">{content.categoriesSeeAll} ↗</Link></p>
       </section>
 
-      <section className="portfolio-section section-pad" id="portfolio">
-        <div className="section-kicker" data-reveal="up"><span>02</span><span>{content.portfolioKicker}</span></div>
-        <div className="portfolio-heading" data-reveal="up"><h2>{content.portfolioTitleLine1}<br/><em>{content.portfolioTitleEm}</em></h2><p>{content.portfolioBody}</p></div>
-        <div className="portfolio-tools" data-reveal="up"><div className="filter-list">{["Todos", ...getSiteCategories(content).map((category) => category.id)].map((id) => { const category = getSiteCategories(content).find((item) => item.id === id); const label = id === "Todos" ? content.categoryAll : category?.name ?? id; return <button key={id} className={activeCategory === id ? "filter active" : "filter"} onClick={() => setActiveCategory(id)}>{label}</button>; })}</div><label className="search-box"><Search size={17}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={content.searchPlaceholder} aria-label={content.searchPlaceholder}/></label></div>
-        <div className="product-grid">
-          {filtered.map((p, i) => <article className={`product-card card-${i % 3}`} key={p.id} data-reveal="up" style={{ "--reveal-delay": `${(i % 6) * 65}ms` } as CSSProperties}>
-            <Link href={`/projeto/?slug=${encodeURIComponent(p.slug)}`} className="product-image-link"><div className="product-image-wrap"><img src={p.images?.[0] || p.image} alt={p.title} loading="lazy"/><span className="product-tag">{p.tag}</span><span className="product-view">{content.productViewLabel} <ArrowUpRight size={16}/></span></div></Link>
-            <div className="product-info"><div><span className="product-category">{categoryLabel(content, p.category)}</span><h3><Link href={`/projeto/?slug=${encodeURIComponent(p.slug)}`}>{p.title}</Link></h3><strong className="product-price">{p.price && p.price > 0 ? p.price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "Preço sob consulta"}</strong></div><div className="product-card-actions"><button className="round-arrow" aria-label={`Adicionar ${p.title} ao carrinho`} onClick={() => window.dispatchEvent(new CustomEvent("3dr-cart-add", { detail: p }))}><ShoppingBag size={17}/></button><Link href={`/projeto/?slug=${encodeURIComponent(p.slug)}`} className="round-arrow" aria-label={`Ver ${p.title}`}><ArrowUpRight size={18}/></Link></div></div>
-          </article>)}
-        </div>
-        {productsStatus === "loading" && <p className="project-loading" role="status">Carregando produtos…</p>}
-        {productsStatus === "error" && <div className="empty-state" role="status"><h3>Catálogo temporariamente indisponível</h3><p>Não conseguimos carregar os produtos agora. Fale com a Kriatto3D pelo WhatsApp para consultar o catálogo.</p><a className="button button-dark" href="https://wa.me/5521995144189" target="_blank" rel="noopener noreferrer">Consultar pelo WhatsApp ↗</a></div>}
-        {productsStatus === "ready" && filtered.length === 0 && <div className="empty-state"><Search size={26}/><h3>{content.emptyTitle}</h3><p>{content.emptyBody}</p><button className="button button-dark" onClick={() => {setSearch("");setActiveCategory("Todos");}}>{content.emptyButton}</button></div>}
-        {productsStatus === "ready" && <div className="portfolio-bottom"><span>{content.portfolioCountPrefix} {filtered.length.toString().padStart(2,"0")} {content.portfolioCountWord}</span><span>{content.portfolioCountSuffix}</span></div>}
-      </section>
+
 
       <section className="manifesto">
         <div className="manifesto-shape shape-a"/><div className="manifesto-shape shape-b"/>
@@ -159,7 +121,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <ShoppingCart/><footer className="footer"><Link href="/" className="brand"><span className="brand-mark">{content.siteInitial}</span> {content.siteName}<span className="brand-dot">.</span></Link><span>{content.footerTagline}</span><a href="#top" onClick={(e) => {e.preventDefault();window.scrollTo({top:0,behavior:"smooth"});}}>{content.footerTop} ↑</a><span className="copyright">{content.footerCopyright}</span></footer>
+      <footer className="footer"><Link href="/" className="brand"><span className="brand-mark">{content.siteInitial}</span> {content.siteName}<span className="brand-dot">.</span></Link><span>{content.footerTagline}</span><a href="#top" onClick={(e) => {e.preventDefault();window.scrollTo({top:0,behavior:"smooth"});}}>{content.footerTop} ↑</a><span className="copyright">{content.footerCopyright}</span></footer>
     </main>
   );
 }
