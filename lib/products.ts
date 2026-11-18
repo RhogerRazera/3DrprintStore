@@ -59,7 +59,8 @@ export function normalizeProduct(id: string, data: Record<string, unknown>): Pro
   const number = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined;
   const imageList = Array.isArray(data.images) ? data.images.filter((value): value is string => typeof value === "string" && value.trim().length > 0).slice(0, 3) : [];
   const image = text(data.image, imageList[0] ?? "");
-  const variants = Array.isArray(data.variants) ? data.variants.filter((item): item is ProductVariant =>
+  const colors = Array.isArray(data.colors) ? data.colors.filter((value): value is string => typeof value === "string") : [];
+  let variants = Array.isArray(data.variants) ? data.variants.filter((item): item is ProductVariant =>
     Boolean(item && typeof item === "object" && typeof (item as ProductVariant).colorId === "string" && typeof (item as ProductVariant).name === "string" && /^#[0-9a-f]{6}$/i.test((item as ProductVariant).hex))
   ).map((item) => ({
     colorId: item.colorId,
@@ -70,10 +71,16 @@ export function normalizeProduct(id: string, data: Record<string, unknown>): Pro
     ...(typeof item.image === "string" && item.image ? { image: item.image } : {}),
     available: item.available !== false,
   })) : [];
+  if (!variants.length && colors.length) {
+    variants = colors.map((name) => {
+      const standard = defaultProductColors.find((color) => color.name.toLocaleLowerCase("pt-BR") === name.toLocaleLowerCase("pt-BR"));
+      const colorId = standard?.id ?? name.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      return { colorId, name, hex: standard?.hex ?? "#808080", available: true };
+    });
+  }
   const kitComponents = Array.isArray(data.kitComponents) ? data.kitComponents.filter((item): item is KitComponent =>
     Boolean(item && typeof item === "object" && typeof (item as KitComponent).productId === "string" && typeof (item as KitComponent).productTitle === "string" && Number.isInteger((item as KitComponent).quantity) && (item as KitComponent).quantity > 0)
   ) : [];
-  const colors = Array.isArray(data.colors) ? data.colors.filter((value): value is string => typeof value === "string") : variants.map((variant) => variant.name);
   return {
     id,
     slug: text(data.slug, id),
