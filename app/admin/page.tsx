@@ -190,7 +190,7 @@ export default function AdminPage() {
     const slug = draft.slug || draft.title.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const { price, stock, ...productFields } = draft;
     const images = (draft.images ?? [draft.image]).map((url) => url.trim()).filter(Boolean).slice(0, 3);
-    const variants = (draft.variants ?? []).filter((variant) => variant.available || variant.stock !== undefined).map((variant) => ({
+    const variants = (draft.variants ?? []).map((variant) => ({
       colorId: variant.colorId, name: variant.name, hex: variant.hex, available: variant.available,
       ...(variant.stock !== undefined ? { stock: variant.stock } : {}),
       ...(variant.priceAdjustment !== undefined ? { priceAdjustment: variant.priceAdjustment } : {}),
@@ -323,7 +323,7 @@ export default function AdminPage() {
           for (const entry of demand.values()) {
             const data = updatedDocs.get(entry.productId) ?? productData.get(entry.productId);
             if (!data || data.published !== true) throw new Error("Um componente do pedido não está mais publicado.");
-            const variants = Array.isArray(data.variants) ? [...data.variants as ProductVariant[]] : [];
+            const variants = Array.isArray(data.variants) ? [...data.variants as ProductVariant[]] : [...(normalizeProduct(entry.productId, data).variants ?? [])];
             let stock: number | undefined;
             const nextData: Record<string, unknown> = { ...data };
             if (entry.variantId) {
