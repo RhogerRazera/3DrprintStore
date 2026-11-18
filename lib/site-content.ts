@@ -30,15 +30,15 @@ export function categoryLabel(content: SiteContent, value: string): string {
 export const defaultSiteContent: SiteContent = {
   siteName: "Kriatto3D", siteInitial: "K", siteTitle: "Kriatto3D — Produtos que viram ideias.", adminButtonLabel: "Painel administrativo",
   siteDescription: "Portfólio de produtos personalizados, mascotes, chaveiros, vestuário, brindes e embalagens.",
-  navPortfolio: "Portfólio", navCategories: "Categorias", navProcess: "Processo", navContact: "Vamos conversar",
+  navCategories: "Categorias", navProcess: "Processo", navContact: "Vamos conversar",
   heroEyebrow: "ESTÚDIO DE PRODUTOS & EXPERIÊNCIAS", heroTitleLine1: "Ideias que", heroTitleLine2: "ganham", heroTitleEm: "forma.",
   heroLead: "Criamos produtos que contam histórias. Do primeiro rascunho ao detalhe que faz alguém olhar duas vezes.",
-  heroPrimaryLabel: "Explorar projetos", heroPrimaryHref: "#portfolio", heroSecondaryLabel: "Como funciona", heroSecondaryHref: "#processo", heroFootLeft: "DESIGN COM INTENÇÃO.", heroFootRight: "FEITO PARA MARCAR.",
+  heroPrimaryLabel: "Explorar categorias", heroPrimaryHref: "#categorias", heroSecondaryLabel: "Como funciona", heroSecondaryHref: "#processo", heroFootLeft: "DESIGN COM INTENÇÃO.", heroFootRight: "FEITO PARA MARCAR.",
   heroStickerTop: "IDEIA\n→ OBJETO", heroStickerBottom: "FEITO\nPRA VOCÊ", heroCompositionAlt: "Apresentação visual da Kriatto3D", heroMainImageUrl: "",
   heroMainImageAlt: "Produto personalizado", heroMainImageLabel: "01 / PERSONAGEM",
   heroSmallImageUrl: "",
   heroSmallImageAlt: "Camiseta personalizada", heroSmallImageLabel: "02 / VESTUÁRIO",
-  heroIndex: "PORTFÓLIO Nº 001 — 2026", heroScroll: "ROLE PARA DESCOBRIR", categoryAll: "Todos",
+  heroIndex: "PORTFÓLIO Nº 001 — 2026", heroScroll: "ROLE PARA DESCOBRIR",
   introKicker: "O QUE PODEMOS CRIAR", introTitleLine1: "Não é só um", introTitleLine2: "produto. É", introTitleEm: "presença.",
   introBody: "Objetos, personagens e experiências que levam a identidade da sua marca para o mundo real. Cada projeto começa com uma boa pergunta: o que queremos fazer as pessoas sentir?",
   category1Title: "Mascotes", category1Desc: "Personagens com personalidade.", category1Color: "#d8fa49", category1Icon: "shape",
@@ -49,10 +49,6 @@ export const defaultSiteContent: SiteContent = {
   category6Title: "Embalagens", category6Desc: "A primeira impressão do produto.", category6Color: "#f1dd77", category6Icon: "package",
   categoryItems: JSON.stringify(defaultProductCategories),
   categoriesHint: "Selecione uma categoria para ver projetos relacionados.", categoriesSeeAll: "Ver tudo",
-  portfolioKicker: "SELEÇÃO DE PROJETOS", portfolioTitleLine1: "Feito para", portfolioTitleEm: "chamar atenção.",
-  portfolioBody: "Uma seleção de conceitos e possibilidades. O próximo projeto pode ser o seu.", searchPlaceholder: "Buscar projeto...",
-  emptyTitle: "Nenhum projeto encontrado", emptyBody: "Tente outra busca ou escolha uma categoria diferente.", emptyButton: "Limpar filtros", productViewLabel: "VER PROJETO",
-  portfolioCountPrefix: "EXIBINDO", portfolioCountWord: "PROJETOS", portfolioCountSuffix: "PERSONALIZAÇÃO SOB CONSULTA",
   manifestoEyebrow: "NOSSO JEITO DE FAZER", manifestoTitleLine1: "Do “e se...”", manifestoTitleLine2: "ao", manifestoTitleEm: "“é isso!”",
   manifestoBody: "Boa ideia merece sair da tela. Unimos conceito, estética e atenção aos detalhes para criar produtos com identidade própria.",
   manifestoButton: "Tirar uma ideia do papel", manifestoButtonHref: "#contato", manifestoSide: "IMAGINAR / DESENHAR / MATERIALIZAR",
@@ -75,7 +71,7 @@ export const contentFields: { key: string; label: string; group: string; kind?: 
   { group: "Marca e navegação", key: "siteName", label: "Nome da marca" }, { group: "Marca e navegação", key: "siteInitial", label: "Letra do símbolo" },
   { group: "Marca e navegação", key: "siteTitle", label: "Título da aba" }, { group: "Marca e navegação", key: "siteDescription", label: "Descrição para busca e compartilhamento", kind: "textarea" },
   { group: "Marca e navegação", key: "adminButtonLabel", label: "Botão de acesso ao painel" },
-  { group: "Marca e navegação", key: "navPortfolio", label: "Link: portfólio" }, { group: "Marca e navegação", key: "navCategories", label: "Link: categorias" },
+{ group: "Marca e navegação", key: "navCategories", label: "Link: categorias" },
   { group: "Marca e navegação", key: "navProcess", label: "Link: processo" }, { group: "Marca e navegação", key: "navContact", label: "Link: contato" },
   { group: "Capa", key: "heroEyebrow", label: "Linha superior" }, { group: "Capa", key: "heroTitleLine1", label: "Título — linha 1" },
   { group: "Capa", key: "heroTitleLine2", label: "Título — linha 2" }, { group: "Capa", key: "heroTitleEm", label: "Título — destaque" },
@@ -92,14 +88,6 @@ export const contentFields: { key: string; label: string; group: string; kind?: 
   { group: "Categorias", key: "introTitleLine2", label: "Título — linha 2" }, { group: "Categorias", key: "introTitleEm", label: "Título — destaque" },
   { group: "Categorias", key: "introBody", label: "Descrição da seção", kind: "textarea" },
   { group: "Categorias", key: "categoriesHint", label: "Instrução das categorias" }, { group: "Categorias", key: "categoriesSeeAll", label: "Botão ver tudo" },
-  { group: "Portfólio", key: "categoryAll", label: "Filtro: mostrar todas" },
-  { group: "Portfólio", key: "portfolioKicker", label: "Identificação da seção" }, { group: "Portfólio", key: "portfolioTitleLine1", label: "Título — linha 1" },
-  { group: "Portfólio", key: "portfolioTitleEm", label: "Título — destaque" }, { group: "Portfólio", key: "portfolioBody", label: "Descrição", kind: "textarea" },
-  { group: "Portfólio", key: "searchPlaceholder", label: "Busca — instrução" }, { group: "Portfólio", key: "emptyTitle", label: "Busca sem resultados — título" },
-  { group: "Portfólio", key: "emptyBody", label: "Busca sem resultados — texto" }, { group: "Portfólio", key: "emptyButton", label: "Busca sem resultados — botão" },
-  { group: "Portfólio", key: "productViewLabel", label: "Cartão: chamada para abrir" },
-  { group: "Portfólio", key: "portfolioCountPrefix", label: "Rodapé — prefixo de contagem" }, { group: "Portfólio", key: "portfolioCountWord", label: "Rodapé — palavra após contagem" },
-  { group: "Portfólio", key: "portfolioCountSuffix", label: "Rodapé — texto" },
   { group: "Manifesto", key: "manifestoEyebrow", label: "Identificação da seção" }, { group: "Manifesto", key: "manifestoTitleLine1", label: "Título — linha 1" },
   { group: "Manifesto", key: "manifestoTitleLine2", label: "Título — linha 2" }, { group: "Manifesto", key: "manifestoTitleEm", label: "Título — destaque" },
   { group: "Manifesto", key: "manifestoBody", label: "Texto", kind: "textarea" }, { group: "Manifesto", key: "manifestoButton", label: "Botão" }, { group: "Manifesto", key: "manifestoButtonHref", label: "Destino do botão" },
@@ -145,6 +133,8 @@ const previousProcessCopy: Record<string, string> = {
 export function mergeSiteContent(saved: Record<string, unknown>): SiteContent {
   const merged = { ...defaultSiteContent, ...saved } as SiteContent;
   if (merged.siteName === "FORMA") merged.siteName = "Kriatto3D";
+  if (merged.heroPrimaryHref === "#portfolio") merged.heroPrimaryHref = "#categorias";
+  if (merged.heroPrimaryLabel === "Explorar projetos") merged.heroPrimaryLabel = "Explorar categorias";
   if (typeof merged.heroMainImageUrl === "string" && merged.heroMainImageUrl.includes("photo-1559454403-b8fb88521f11")) merged.heroMainImageUrl = "";
   if (typeof merged.heroSmallImageUrl === "string" && merged.heroSmallImageUrl.includes("photo-1521572163474-6864f9cf17ab")) merged.heroSmallImageUrl = "";
   if (merged.heroCompositionAlt === "Composição de produtos demonstrativos") merged.heroCompositionAlt = defaultSiteContent.heroCompositionAlt;
@@ -153,7 +143,6 @@ export function mergeSiteContent(saved: Record<string, unknown>): SiteContent {
   if (merged.siteInitial === "F" && merged.siteName === "Kriatto3D") merged.siteInitial = "K";
   if (typeof merged.siteTitle === "string" && merged.siteTitle.startsWith("FORMA")) merged.siteTitle = defaultSiteContent.siteTitle;
   if (merged.footerCopyright === "© 2026 FORMA STUDIO") merged.footerCopyright = defaultSiteContent.footerCopyright;
-  if (merged.portfolioCountSuffix === "CONCEITOS DEMONSTRATIVOS · PERSONALIZAÇÃO SOB CONSULTA") merged.portfolioCountSuffix = defaultSiteContent.portfolioCountSuffix;
   if (typeof saved.categoryItems !== "string") {
     const legacyItems = defaultProductCategories.map((category, index) => ({
       ...category,
