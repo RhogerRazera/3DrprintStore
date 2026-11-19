@@ -119,7 +119,7 @@ export default function CatalogPage() {
           <p className="catalog-product-description">{product.description}</p>
         </article>)}</section> : <section className="catalog-empty"><h2>Nenhum produto encontrado.</h2><p>Tente outro termo ou remova o filtro.</p></section>}</>
         : <section className="catalog-empty"><h2>Catálogo em atualização.</h2><p>Os produtos desta categoria serão publicados em breve.</p><Link className="button button-dark" href="/">Voltar ao site ↗</Link></section>}
-    <footer className="footer"><Link href="/">{content.siteName}</Link><Link href="/admin/">Painel administrativo ↗</Link></footer>
+    <footer className="footer"><Link href="/">{content.siteName}</Link></footer>
     <ShoppingCart/>
   </main>;
 }
