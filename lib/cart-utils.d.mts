@@ -7,5 +7,6 @@ export function normalizeCartItems(value: unknown): CartItem[];
 export function addCartItem(items: unknown, product: Product): CartItem[];
 export function updateCartItem(items: unknown, id: string, delta: number): CartItem[];
 export function cartTotal(items: unknown): number;
+export function isCartPriceCurrent(item: unknown, livePrice: number | undefined): boolean;
 export function createWhatsAppMessage(items: unknown, orderId?: string): string;
 
