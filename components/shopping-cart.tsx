@@ -12,6 +12,7 @@ import {
   MAX_CART_LINES,
   cartTotal,
   createWhatsAppMessage,
+  isCartPriceCurrent,
   normalizeCartItems,
   updateCartItem,
 } from "@/lib/cart-utils.mjs";
@@ -26,6 +27,8 @@ export default function ShoppingCart() {
   const [open, setOpen] = useState(false);
   const [cartBumped, setCartBumped] = useState(false);
   const [cartNotice, setCartNotice] = useState("");
+  const [checkoutStatus, setCheckoutStatus] = useState<"idle" | "checking" | "sent">("idle");
+  const checkoutLock = useRef(false);
   const itemsRef = useRef<CartItem[]>([]);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
@@ -60,12 +63,15 @@ export default function ShoppingCart() {
         const next = normalizeCartItems(parsed);
         itemsRef.current = next;
         setItems(next);
+        checkoutLock.current = false;
+        setCheckoutStatus("idle");
       } catch {
         itemsRef.current = [];
         setItems([]);
       }
     };
     const add = (event: Event) => {
+      if (checkoutLock.current) return;
       const product = (event as CustomEvent<Product & { productId?: string; variantId?: string; variantName?: string; variantHex?: string; stock?: number }>).detail;
       if (!product) return;
       const current = itemsRef.current.find((item) => item.id === product.id);
@@ -77,6 +83,7 @@ export default function ShoppingCart() {
       const limitReached = isNewLine && itemsRef.current.length >= MAX_CART_LINES;
       const next = addCartItem(itemsRef.current, product);
       const persisted = commitItems(next);
+      setCheckoutStatus("idle");
       setOpen(true);
       setCartBumped(true);
       setCartNotice(limitReached
@@ -131,15 +138,22 @@ export default function ShoppingCart() {
     };
   }, [open]);
 
-  const update = (id: string, delta: number) => commitItems(updateCartItem(itemsRef.current, id, delta));
+  const update = (id: string, delta: number) => {
+    if (checkoutLock.current) return;
+    setCheckoutStatus("idle");
+    commitItems(updateCartItem(itemsRef.current, id, delta));
+  };
   const total = cartTotal(items);
   const itemCount = items.reduce((count, item) => count + item.quantity, 0);
   const checkout = () => {
-    if (items.length === 0) return;
+    if (items.length === 0 || checkoutLock.current) return;
     void checkoutByWhatsApp();
   };
 
   async function checkoutByWhatsApp() {
+    if (checkoutLock.current || items.length === 0) return;
+    checkoutLock.current = true;
+    setCheckoutStatus("checking");
     const popup = window.open("about:blank", "_blank");
     setCartNotice("Conferindo disponibilidade e registrando o pedido…");
     try {
@@ -155,6 +169,10 @@ export default function ShoppingCart() {
           const product = dataById.get(item.productId);
           if (!product || product.published !== true) throw new Error(`${item.title} não está mais publicado.`);
           if ((product.kind === "kit") !== (item.kind === "kit")) throw new Error(`O cadastro de ${item.title} mudou; remova e adicione novamente ao carrinho.`);
+          const liveProduct = normalizeProduct(item.productId, product);
+          const liveVariant = item.variantId ? liveProduct.variants?.find((variant) => variant.colorId === item.variantId) : undefined;
+          const livePrice = liveProduct.price === undefined ? undefined : liveProduct.price + (liveVariant?.priceAdjustment ?? 0);
+          if (!isCartPriceCurrent(item, livePrice)) throw new Error(`O preço de ${item.title} mudou. Atualize a página e adicione o produto novamente para conferir o valor atual.`);
           if (product.kind === "kit") {
             const components = Array.isArray(product.kitComponents) ? product.kitComponents as { productId: string; quantity: number; variantId?: string; productTitle?: string }[] : [];
             if (components.length < 2) throw new Error(`Os itens do kit ${item.title} não estão disponíveis.`);
@@ -213,6 +231,7 @@ export default function ShoppingCart() {
         status: "pending",
         createdAt: serverTimestamp(),
       });
+      setCheckoutStatus("sent");
       const message = createWhatsAppMessage(items, orderRef.id);
       const url = "https://wa.me/5521995144189?text=" + encodeURIComponent(message);
       setCartNotice(`Pedido ${orderRef.id} registrado para confirmação.`);
@@ -220,6 +239,8 @@ export default function ShoppingCart() {
       else window.location.href = url;
     } catch (reason) {
       popup?.close();
+      checkoutLock.current = false;
+      setCheckoutStatus("idle");
       setCartNotice(reason instanceof Error ? reason.message : "Não foi possível registrar o pedido.");
     }
   }
@@ -251,17 +272,18 @@ export default function ShoppingCart() {
               <img src={item.image} alt=""/>
               <div className="cart-item-copy"><strong>{item.title}</strong>{item.kind === "kit" && <small>KIT PROMOCIONAL</small>}{item.variantName && <small><span className="cart-color-dot" style={{ backgroundColor: item.variantHex ?? "#777" }}/> {item.variantName}</small>}<small>{item.price ? formatPrice(item.price) : "Preço sob consulta"}</small>
                 <div className="cart-qty">
-                  <button aria-label={`Diminuir quantidade de ${item.title}`} onClick={() => update(item.id, -1)}><Minus size={14}/></button>
+                  <button aria-label={`Diminuir quantidade de ${item.title}`} disabled={checkoutStatus === "checking"} onClick={() => update(item.id, -1)}><Minus size={14}/></button>
                   <span>{item.quantity}</span>
-                  <button aria-label={`Aumentar quantidade de ${item.title}`} disabled={item.stock !== undefined && item.quantity >= item.stock} onClick={() => update(item.id, 1)}><Plus size={14}/></button>
-                  <button aria-label={`Remover ${item.title}`} onClick={() => update(item.id, -item.quantity)}><Trash2 size={14}/></button>
+                  <button aria-label={`Aumentar quantidade de ${item.title}`} disabled={checkoutStatus === "checking" || item.stock !== undefined && item.quantity >= item.stock} onClick={() => update(item.id, 1)}><Plus size={14}/></button>
+                  <button aria-label={`Remover ${item.title}`} disabled={checkoutStatus === "checking"} onClick={() => update(item.id, -item.quantity)}><Trash2 size={14}/></button>
                 </div>
               </div>
               <b>{item.price ? formatPrice(item.price * item.quantity) : "—"}</b>
             </article>)}</div>
             <div className="cart-total"><span>Total</span><strong>{formatPrice(total)}</strong></div>
             <p className="cart-disclaimer">Produtos sem preço cadastrado serão confirmados pelo WhatsApp.</p>
-            <button className="button button-dark cart-checkout" onClick={checkout}>Continuar pelo WhatsApp ↗</button>
+            <p className="cart-checkout-note">O pedido aguarda confirmação pelo WhatsApp. O estoque não fica reservado até a confirmação; valores e disponibilidade podem mudar nesse intervalo.</p>
+            <button className="button button-dark cart-checkout" disabled={checkoutStatus !== "idle"} onClick={checkout}>{checkoutStatus === "checking" ? "Conferindo pedido…" : checkoutStatus === "sent" ? "Pedido registrado" : "Continuar pelo WhatsApp ↗"}</button>
           </>}
       </aside>
     </div>}
