@@ -5,6 +5,7 @@ import {
   addCartItem,
   cartTotal,
   createWhatsAppMessage,
+  isCartPriceCurrent,
   normalizeCartItems,
   updateCartItem,
 } from "../lib/cart-utils.mjs";
@@ -39,11 +40,11 @@ test("adds and adjusts items without going below zero or over the cap", () => {
   assert.equal(updateCartItem([{ ...product, quantity: 99 }], "item-1", 1)[0].quantity, 99);
 });
 
-test("limits the cart to a manageable number of distinct products", () => {
+test("limits the cart to the Firestore order line limit", () => {
   const entries = Array.from({ length: 60 }, (_, index) => ({ ...product, id: "item-" + index, quantity: 1 }));
   const normalized = normalizeCartItems(entries);
-  assert.equal(normalized.length, 50);
-  assert.equal(addCartItem(normalized, { ...product, id: "overflow" }).length, 50);
+  assert.equal(normalized.length, 10);
+  assert.equal(addCartItem(normalized, { ...product, id: "overflow" }).length, 10);
 });
 
 test("calculates totals and builds a WhatsApp order message", () => {
@@ -71,5 +72,12 @@ test("does not combine duplicate persisted lines above the stock limit", () => {
     { ...product, id: "item-1::azul", productId: "item-1", variantId: "azul", stock: 3, quantity: 2 },
   ]);
   assert.equal(items[0].quantity, 3);
+});
+
+test("rejects cart prices that no longer match current product data", () => {
+  assert.equal(isCartPriceCurrent({ price: 12 }, 12), true);
+  assert.equal(isCartPriceCurrent({ price: 12 }, 15), false);
+  assert.equal(isCartPriceCurrent({}, undefined), true);
+  assert.equal(isCartPriceCurrent({ price: 12 }, undefined), false);
 });
 
