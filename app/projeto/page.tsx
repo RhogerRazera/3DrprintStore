@@ -1,11 +1,11 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- Product photos come from administrator-entered URLs, so their hosts are not fixed. */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, Check, ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
 import { collection, doc, getDoc, getDocs, limit, query, where } from "firebase/firestore";
-import { calculateKitStock, defaultProductColors, normalizeProduct, Product, ProductColorOption } from "@/lib/products";
+import { calculateKitStock, calculateKitValue, defaultProductColors, normalizeProduct, Product, ProductColorOption } from "@/lib/products";
 import { db } from "@/lib/firebase";
 import { categoryLabel, defaultSiteContent, mergeSiteContent, SiteContent } from "@/lib/site-content";
 import ShoppingCart from "@/components/shopping-cart";
@@ -50,7 +50,8 @@ export default function ProjectPage() {
           const componentSnapshots = await Promise.all(loaded.kitComponents.map((item) => getDoc(doc(db!, "products", item.productId))));
           const componentProducts = componentSnapshots.filter((item) => item.exists()).map((item) => normalizeProduct(item.id, item.data()));
           setKitAvailable(calculateKitStock(loaded.kitComponents, componentProducts));
-        }
+          setProduct({ ...loaded, compareAtPrice: calculateKitValue(loaded.kitComponents, componentProducts) });
+        } else if (loaded?.kind === "kit") setKitAvailable(0);
       })
       .catch(() => {
         setProduct(null);
@@ -59,10 +60,10 @@ export default function ProjectPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const productImages = (Array.isArray(product?.images) && product.images.length ? product.images : product?.image ? [product.image] : []).filter((url): url is string => typeof url === "string" && url.length > 0).slice(0, 3);
+  const productImages = useMemo(() => (Array.isArray(product?.images) && product.images.length ? product.images : product?.image ? [product.image] : []).filter((url): url is string => typeof url === "string" && url.length > 0).slice(0, 3), [product?.images, product?.image]);
   const availableVariants = (product?.variants ?? []).filter((variant) => variant.available && productColors.find((color) => color.id === variant.colorId)?.active !== false);
   const selectedVariant = availableVariants.find((variant) => variant.colorId === selectedVariantId) ?? availableVariants[0] ?? null;
-  const selectedImages = selectedVariant?.image ? [selectedVariant.image, ...productImages.filter((image) => image !== selectedVariant.image)] : productImages;
+  const selectedImages = useMemo(() => selectedVariant?.image ? [selectedVariant.image, ...productImages.filter((image) => image !== selectedVariant.image)] : productImages, [selectedVariant?.image, productImages]);
   const shownPrice = product?.price === undefined ? undefined : product.price + (selectedVariant?.priceAdjustment ?? 0);
   const productStock = selectedVariant?.stock ?? product?.stock;
   const availableForCart = product?.kind === "kit" ? kitAvailable !== 0 : product?.variants?.length ? Boolean(selectedVariant && (productStock === undefined || productStock > 0)) : product?.stock === undefined || product.stock > 0;
@@ -80,8 +81,36 @@ export default function ProjectPage() {
 
   useEffect(() => {
     document.title = `${product?.title ?? content.siteTitle} · ${content.siteName}`;
-    document.querySelector('meta[name="description"]')?.setAttribute("content", product?.description ?? content.siteDescription);
-  }, [product, content.siteName, content.siteTitle, content.siteDescription]);
+    const description = product?.description ?? content.siteDescription;
+    document.querySelector('meta[name="description"]')?.setAttribute("content", description);
+    document.querySelector('meta[property="og:title"]')?.setAttribute("content", `${product?.title ?? content.siteTitle} · ${content.siteName}`);
+    document.querySelector('meta[property="og:description"]')?.setAttribute("content", description);
+    if (product?.image) {
+      let imageMeta = document.querySelector<HTMLMetaElement>('meta[property="og:image"]');
+      if (!imageMeta) { imageMeta = document.createElement("meta"); imageMeta.setAttribute("property", "og:image"); document.head.appendChild(imageMeta); }
+      imageMeta.content = product.image;
+    }
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]') ?? document.head.appendChild(Object.assign(document.createElement("link"), { rel: "canonical" }));
+    canonical.href = product ? `${window.location.origin}${window.location.pathname}?slug=${encodeURIComponent(product.slug)}` : window.location.href;
+    const structuredData = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: product?.title,
+      description: product?.description,
+      image: selectedImages,
+      category: product ? categoryLabel(content, product.category) : undefined,
+      offers: product?.price !== undefined ? {
+        "@type": "Offer",
+        price: shownPrice ?? product.price,
+        priceCurrency: "BRL",
+        availability: productStock === 0 ? "https://schema.org/OutOfStock" : productStock === undefined ? "https://schema.org/PreOrder" : "https://schema.org/InStock",
+        url: window.location.href,
+      } : undefined,
+    };
+    let jsonLd = document.getElementById("product-jsonld") as HTMLScriptElement | null;
+    if (!jsonLd) { jsonLd = document.createElement("script"); jsonLd.id = "product-jsonld"; jsonLd.type = "application/ld+json"; document.head.appendChild(jsonLd); }
+    jsonLd.textContent = JSON.stringify(structuredData).replace(/</g, "\\u003c");
+  }, [product, content.siteName, content.siteTitle, content.siteDescription, content, selectedImages, shownPrice, productStock]);
 
   if (loading) return <main className="project-page"><p className="project-loading" role="status">{content.projectLoading}</p></main>;
   if (!product) return <main className="project-page">
@@ -99,7 +128,7 @@ export default function ProjectPage() {
         <p className="project-description">{product.description}</p>
         {product.kind === "kit" && product.kitComponents?.length ? <section className="kit-detail-items"><h2>Itens incluídos</h2>{product.kitComponents.map((item, index) => <p key={item.productId + index}><span>{item.quantity} × {item.productTitle}</span>{item.variantName && <small><i style={{ backgroundColor: item.variantHex ?? "#777" }}/> {item.variantName}</small>}</p>)}</section> : null}
         {availableVariants.length > 0 && <fieldset className="product-variant-picker"><legend>Escolha uma cor: <strong>{selectedVariant?.name ?? "Selecione"}</strong></legend><div>{availableVariants.map((variant) => <button key={variant.colorId} type="button" className={selectedVariant?.colorId === variant.colorId ? "selected" : ""} style={{ backgroundColor: variant.hex }} aria-label={variant.name} aria-pressed={selectedVariant?.colorId === variant.colorId} onClick={() => { setSelectedVariantId(variant.colorId); setActiveImage(0); }}/>)}</div></fieldset>}
-        {product.kind === "kit" && product.compareAtPrice !== undefined && product.price !== undefined
+        {product.kind === "kit" && product.compareAtPrice !== undefined && product.price !== undefined && product.compareAtPrice > product.price
           ? <div className="kit-price-block"><del>{product.compareAtPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</del><div className="project-price">{product.price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div><span>Você economiza {(product.compareAtPrice - product.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} ({Math.round((product.compareAtPrice - product.price) / product.compareAtPrice * 100)}%)</span></div>
           : <div className="project-price">{shownPrice && shownPrice > 0 ? shownPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "Preço sob consulta"}</div>}
         {product.kind === "kit" && kitAvailable !== null ? <p className="availability-note">{kitAvailable > 0 ? "Disponível: " + kitAvailable + " kit(s)" : "Kit sem estoque no momento"}</p>
