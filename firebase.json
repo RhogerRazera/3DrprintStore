@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "portfolio-3drprint-2026",
     "public": "out",
     "ignore": [
       "firebase.json",
@@ -20,3 +21,4 @@
     }
   }
 }
+
